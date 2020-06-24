@@ -1,0 +1,155 @@
+import 'package:flutter/material.dart';
+import 'package:outbreak_covid19/core/controllers/api.dart';
+import 'package:outbreak_covid19/core/models/country_model.dart';
+import 'package:outbreak_covid19/ui/custom_widgets/static_card.dart';
+import 'package:outbreak_covid19/ui/custom_widgets/virus_loader.dart';
+
+class CountryDetailPage extends StatefulWidget {
+  final String countryName;
+
+  CountryDetailPage({@required this.countryName});
+
+  @override
+  _CountryDetailPageState createState() => _CountryDetailPageState();
+}
+
+class _CountryDetailPageState extends State<CountryDetailPage> {
+  Country _countryInfo;
+  double deathPercentage;
+  double activePercentage;
+  bool _isLoading = false;
+  CovidApi api = CovidApi();
+  double recoveryPercentage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCountryDetails();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        title: Text(
+          widget.countryName,
+          style: TextStyle(color: Theme.of(context).accentColor),
+        ),
+        leading: GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: Icon(
+            Icons.arrow_back,
+            color: Theme.of(context).accentColor,
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: _isLoading
+            ? VirusLoader()
+            : _countryInfo == null
+                ? buildErrorMessage()
+                : ListView(
+                    children: <Widget>[
+                      StatisticCard(
+                        color: Colors.orange,
+                        text: 'Total cases',
+                        icon: Icons.timeline,
+                        stats: _countryInfo.cases,
+                      ),
+                      StatisticCard(
+                        color: Colors.green,
+                        text: 'Total recovered',
+                        icon: Icons.verified_user,
+                        stats: _countryInfo.recovered,
+                      ),
+                      StatisticCard(
+                        color: Colors.blue,
+                        text: 'Active cases',
+                        icon: Icons.whatshot,
+                        stats: _countryInfo.active,
+                      ),
+                      StatisticCard(
+                        color: Colors.black,
+                        text: 'Critical cases',
+                        icon: Icons.warning,
+                        stats: _countryInfo.critical,
+                      ),
+                      StatisticCard(
+                        color: Colors.blueGrey,
+                        text: 'Total tests',
+                        icon: Icons.healing,
+                        stats: _countryInfo.totalTests,
+                      ),
+                      StatisticCard(
+                        color: Colors.red,
+                        text: 'Total deaths',
+                        icon: Icons.airline_seat_individual_suite,
+                        stats: _countryInfo.deaths,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Card(
+                          elevation: 4.0,
+                          child: ListTile(
+                            leading: Icon(Icons.sentiment_very_dissatisfied),
+                            title: Text('Death percentage'),
+                            trailing: Text(
+                              deathPercentage.toStringAsFixed(2) + ' %',
+                              style: TextStyle(
+                                  color: Theme.of(context).accentColor,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Card(
+                          elevation: 4.0,
+                          child: ListTile(
+                            leading: Icon(Icons.sentiment_very_satisfied),
+                            title: Text('Recovery percentage'),
+                            trailing: Text(
+                              recoveryPercentage.toStringAsFixed(2) + ' %',
+                              style: TextStyle(
+                                  color: Theme.of(context).accentColor,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
+      ),
+    );
+  }
+
+  Center buildErrorMessage() {
+    return Center(
+      child: Text(
+        'Unable to fetch data',
+        style: Theme.of(context).textTheme.title.copyWith(color: Colors.grey),
+      ),
+    );
+  }
+
+  void _fetchCountryDetails() async {
+    setState(() => _isLoading = true);
+    try {
+      var countryInfo = await api.getCountryByName(widget.countryName);
+      deathPercentage = (countryInfo.deaths / countryInfo.cases) * 100;
+      recoveryPercentage = (countryInfo.recovered / countryInfo.cases) * 100;
+      activePercentage = 100 - (deathPercentage + recoveryPercentage);
+
+      print(deathPercentage);
+      print(recoveryPercentage);
+      print(activePercentage);
+      setState(() => _countryInfo = countryInfo);
+    } catch (ex) {
+      setState(() => _countryInfo = null);
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+}
